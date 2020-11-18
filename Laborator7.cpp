@@ -2,6 +2,20 @@
 #include <string>
 using namespace std;
 
+//exceptie custom definita de utilizator
+class null_exception : public exception
+{
+public:
+	null_exception()
+	{
+
+	}
+	null_exception(const char* message) : exception(message)
+	{
+
+	}
+};
+
 class student
 {
 private:
@@ -145,20 +159,17 @@ public:
 		}
 	}
 
-	//operatorul de negatie
 	bool operator!()
 	{
 		return nr_note > 0;
 	}
 
-	//operatorul de preincrementare
 	student operator++()
 	{
 		this->varsta++;
 		return *this;
 	}
 
-	//operatorul de postincrementare
 	student operator++(int i)
 	{
 		student copie = *this;
@@ -166,31 +177,36 @@ public:
 		return copie;
 	}
 
-	//operator +
 	student operator+(int valoare)
 	{
-		student copie = *this;
-		copie.varsta += valoare;
-		return copie;
+		if (valoare > 0)
+		{
+			student copie = *this;
+			copie.varsta += valoare;
+			return copie;
+		}
+		else
+		{
+			//aruncarea unui cod de eroare (intreg)
+			throw 15;
+		}
 	}
 
-	//operator index cu rol de citire-scriere
 	int& operator[](int index)
 	{
 		if (index >= 0 && index < nr_note)
 		{
 			return note[index];
 		}
+		//aruncare exceptie
 		throw exception("index invalid");
 	}
 
-	//operator de cast la int explicit
 	explicit operator int()
 	{
 		return varsta;
 	}
 
-	//operator functie ce returneaza lungimea adresei
 	int operator()()
 	{
 		if (adresa != nullptr)
@@ -199,7 +215,8 @@ public:
 		}
 		else
 		{
-			return 0;
+			//aruncare exceptie custom
+			throw null_exception();
 		}
 	}
 
@@ -270,8 +287,6 @@ public:
 		}
 	}
 
-	//getter si setter pentru campul static
-
 	static string getUniversitate()
 	{
 		return universitate;
@@ -282,9 +297,6 @@ public:
 		student::universitate = universitate;
 	}
 
-	//metodele statice nu il pot prelucra pe this
-	//cu toate acestea au acces la membrii privati
-	//fiind membre ale clasei
 	static float medieSerie(student* studenti, int nrStudenti)
 	{
 		float suma = 0;
@@ -317,22 +329,17 @@ public:
 		}
 	}
 
-	//functiile friend pot accesa membrii private sau protected ai clasei
 	friend ostream& operator<<(ostream&, student);
 	friend istream& operator>>(istream&, student&);
 };
 string student::universitate = "ASE";
 
-//conservarea comutativitatii operatorului +
 student operator+(int valoare, student s)
 {
-	//nu este nevoie sa facem o copie locala
-	//deoarece s este transmis prin valoare
 	s.varsta += valoare;
 	return s;
 }
 
-//operator de afisare
 ostream& operator<<(ostream& out, student s)
 {
 	out << "nume: " << s.nume << endl;
@@ -358,7 +365,6 @@ ostream& operator<<(ostream& out, student s)
 	return out;
 }
 
-//operator de citire
 istream& operator>>(istream& in, student& s)
 {
 	cout << "nume = ";
@@ -400,6 +406,99 @@ istream& operator>>(istream& in, student& s)
 	}
 	return in;
 }
+
+//derivare publica
+class student_voluntar : public student
+{
+private:
+	char* organizatie = nullptr;
+
+public:
+	//apelul constructorului default din clasa de baza se realizeaza automat
+	student_voluntar()
+	{
+		organizatie = new char[strlen("necunoscuta") + 1];
+		strcpy_s(organizatie, strlen("necunoscuta") + 1, "necunoscuta");
+	}
+
+	
+	student_voluntar(string nume, int* note, int nr_note, const char* organizatie) : 
+		student(nume, note, nr_note) //apel constructor din clasa de baza
+	{
+		if (organizatie != nullptr)
+		{
+			this->organizatie = new char[strlen(organizatie) + 1];
+			strcpy_s(this->organizatie, strlen(organizatie) + 1, organizatie);
+		}
+	}
+
+	//destructor
+	~student_voluntar()
+	{
+		if (organizatie != nullptr)
+		{
+			delete[] organizatie;
+		}
+	}
+
+	//constructor de copiere
+	student_voluntar(const student_voluntar& s) :student(s) //apel constructor de copiere din baza
+	{
+		if (s.organizatie != nullptr)
+		{
+			this->organizatie = new char[strlen(s.organizatie) + 1];
+			strcpy_s(this->organizatie, strlen(s.organizatie) + 1, s.organizatie);
+
+		}
+	}
+
+	student_voluntar operator=(const student_voluntar& s)
+	{
+		//apel operator= din clasa de baza
+		student::operator=(s);
+		if (organizatie != nullptr)
+		{
+			delete[] organizatie;
+		}
+
+		if (s.organizatie != nullptr)
+		{
+			this->organizatie = new char[strlen(s.organizatie) + 1];
+			strcpy_s(this->organizatie, strlen(s.organizatie) + 1, s.organizatie);
+
+		}
+		return *this;
+	}
+
+	//redefinire operatori de scriere si afisare pentru clasa derivata
+	friend ostream& operator<<(ostream&, student_voluntar);
+	friend istream& operator>>(istream&, student_voluntar&);
+
+};
+
+ostream& operator<<(ostream& out, student_voluntar s)
+{
+	//apel operator de scriere din baza
+	out << (student)s << endl;
+	if (s.organizatie != nullptr)
+		out << "organizatie:" << s.organizatie;
+	return out;
+}
+
+istream& operator>>(istream& in, student_voluntar& s)
+{
+	//apel operatori de citire din baza
+	in >> (student&)s;
+	string buffer;
+	cout << "organizatie = ";
+	in >> buffer;
+	if (s.organizatie != nullptr)
+		delete[] s.organizatie;
+	s.organizatie = new char[buffer.length() + 1];
+	strcpy_s(s.organizatie, buffer.length() + 1, buffer.c_str());
+	return in;
+}
+
 
 int main()
 {
@@ -466,39 +565,58 @@ int main()
 	float medie = student::medieSerie(studenti, 2);
 	cout << medie << endl;
 
-	//apel constructor de copiere
 	student s7 = s5;
-	//apel operator=
 	s = s6;
-	//apel operator= in cascada
 	s = s5 = s6;
-	//apel operator negatie
 	bool areNote = !s5;
 	cout << areNote << endl;
-	//apel preincrementare
 	student s8 = ++s5;
-	//apel postincrementare
 	student s9 = s6++;
 
-	//apel operator + din clasa
 	s8 = s5 + 7;
-	//apel operator + global
 	s9 = 3 + s5;
 
 	cout << s5 << endl;
 	student s10;
-	//apel operator de citire
 	cin >> s10;
-	//apel operator de afisare
 	cout << s10 << endl;
-	//apel operator index in mod scriere
-	s5[1] = 10;
-	//apel operator index in mod citire
-	cout << s5[1] << endl;
+	//s5[1] = 10;
+	//cout << s5[1] << endl;
 
-	//apel operator de cast la int explicit
 	int varsta = (int)s9;
 	cout << varsta << endl;
-	//apel operator functie
-	cout << s10();
+	cout << s4();
+
+	student_voluntar sv1;
+	student_voluntar sv2("Andrei", z, 5, "SISC");
+	student_voluntar sv3 = sv2;
+	sv1 = sv2;
+
+	cin >> sv1;
+	cout << sv1;
+
+	student cs = sv1;
+	//tratare exceptii
+	try
+	{
+		sv2 + 2;
+		s10();
+		cout << sv2[2];
+	}
+	catch (null_exception e)
+	{
+		cout << "obiect nul";
+	}
+	catch (exception e)
+	{
+		cout << e.what();
+	}
+	catch (int i)
+	{
+		cout << "cod eroare: " << i;
+	}
+	catch (...)
+	{
+		cout << "alta eroare";
+	}
 }
